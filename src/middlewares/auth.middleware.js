@@ -1,26 +1,35 @@
 import jwt from "jsonwebtoken";
 import userModel from "../models/user.model.js";
 
-async function authMiddleware(req, res, next) {
+export default async function authMiddleware(req, res, next) {
     try {
-        const token = req.cookies?.token || (req.headers.authorization || "").replace("Bearer ", "");
+        let token = null;
 
-        if (!token) {
-            return res.status(401).json({ message: "You must be signed in to do that." });
+        // 1. Bearer token
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith("Bearer ")) {
+            token = authHeader.split(" ")[1];
         }
 
-        const data = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await userModel.findById(data.userId);
+        // 2. Fallback to cookie (optional)
+        if (!token && req.cookies?.token) {
+            token = req.cookies.token;
+        }
 
+        if (!token) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        const user = await userModel.findById(decoded.userId);
         if (!user) {
             return res.status(401).json({ message: "User not found" });
         }
 
         req.user = user;
         next();
-    } catch (err) {
-        return res.status(401).json({ message: "Invalid or expired session. Please sign in again." });
+    } catch {
+        return res.status(401).json({ message: "Invalid token" });
     }
 }
-
-export default authMiddleware;

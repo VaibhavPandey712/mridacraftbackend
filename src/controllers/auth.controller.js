@@ -1,5 +1,5 @@
 import userModel from "../models/user.model.js";
-import { signToken, cookieOptions } from "../utils/token.js";
+import { signToken } from "../utils/token.js";
 import { buildGoogleAuthUrl, exchangeCodeForProfile } from "../services/google.service.js";
 
 const FRONTEND_URL = () => process.env.FRONTEND_URL || "http://localhost:5173";
@@ -53,11 +53,12 @@ export async function googleCallback(req, res) {
         }
 
         const token = signToken(user._id);
-        res.cookie("token", token, cookieOptions());
 
         const redirectTo = state ? decodeURIComponent(state) : "/profile";
         const safePath = redirectTo.startsWith("/") ? redirectTo : "/profile";
-        res.redirect(`${FRONTEND_URL()}${safePath}`);
+
+        // Send JWT to frontend instead of cookie
+        res.redirect(`${FRONTEND_URL()}${safePath}?token=${token}`);
     } catch (err) {
         console.error("Google OAuth error:", err?.response?.data || err.message);
         res.redirect(`${FRONTEND_URL()}/login?error=google_auth_failed`);
@@ -84,6 +85,5 @@ export async function updateMe(req, res) {
 
 /** POST /api/auth/logout */
 export function logout(req, res) {
-    res.clearCookie("token", { ...cookieOptions(), maxAge: 0 });
-    res.status(200).json({ message: "Logged out" });
+  res.status(200).json({ message: "Logged out" });
 }
