@@ -40,14 +40,26 @@ export async function googleCallback(req, res) {
                 user.avatarUrl = user.avatarUrl || picture || "";
                 await user.save();
             } else {
+                // user = await userModel.create({
+                //     googleId,
+                //     email: email.toLowerCase(),
+                //     fullName: name || email.split("@")[0],
+                //     avatarUrl: picture || "",
+                //     role: process.env.ADMIN_EMAIL && email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()
+                //         ? "ADMIN"
+                //         : "USER",
+                // });
+                const adminEmails = [
+                    process.env.ADMIN_EMAIL?.toLowerCase(),
+                    process.env.ADMIN_EMAIL2?.toLowerCase(),
+                ];
+
                 user = await userModel.create({
                     googleId,
                     email: email.toLowerCase(),
                     fullName: name || email.split("@")[0],
                     avatarUrl: picture || "",
-                    role: process.env.ADMIN_EMAIL && email.toLowerCase() === process.env.ADMIN_EMAIL.toLowerCase()
-                        ? "ADMIN"
-                        : "USER",
+                    role: adminEmails.includes(email.toLowerCase()) ? "ADMIN" : "USER",
                 });
             }
         }
@@ -85,5 +97,5 @@ export async function updateMe(req, res) {
 
 /** POST /api/auth/logout */
 export function logout(req, res) {
-  res.status(200).json({ message: "Logged out" });
+    res.status(200).json({ message: "Logged out" });
 }

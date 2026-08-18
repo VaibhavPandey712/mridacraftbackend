@@ -147,7 +147,6 @@ export async function getOrderById(req, res) {
 }
 
 /** GET /api/orders/admin/all (admin) */
-/** GET /api/orders/admin/all (admin) */
 export async function getAllOrders(req, res) {
     try {
         const orders = await orderModel
