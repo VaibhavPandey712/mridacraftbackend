@@ -160,13 +160,15 @@ export async function getAllOrders(req, res) {
             userId: order.user?._id?.toString() || "",
             customerName: order.user?.fullName || "Unknown",
             customerEmail: order.user?.email || "",
+
             items: order.items.map((item) => ({
-                productId: item.product?._id?.toString() || "",
-                name: item.product?.name || "Deleted Product",
-                image: item.product?.image || "",
+                productId: item.productId?._id?.toString() || "",
+                name: item.productId?.name || item.name,
+                image: item.productId?.images?.[0] || item.image,
                 price: item.price,
                 quantity: item.quantity,
             })),
+
             address: order.address,
             subtotal: order.subtotal,
             shipping: order.shipping,
