@@ -152,7 +152,7 @@ export async function getAllOrders(req, res) {
         const orders = await orderModel
             .find()
             .populate("user", "fullName email")
-            .populate("items.product", "name image price")
+            .populate("items.productId", "name image price")
             .sort({ createdAt: -1 });
 
         const formattedOrders = orders.map((order) => ({
