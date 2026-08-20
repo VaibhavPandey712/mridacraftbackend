@@ -1,6 +1,7 @@
 import productModel from "../models/product.model.js";
 import { uploadMultiple } from "../services/storage.service.js";
 import { slugify } from "../utils/slugify.js";
+import generateProductDetails from "../services/ai.service.js";
 
 /** GET /api/products?search=&category=&minPrice=&maxPrice=&sort= */
 export async function listProducts(req, res) {
@@ -101,51 +102,98 @@ export async function relatedProducts(req, res) {
 }
 
 /** POST /api/products (admin, multipart/form-data, field name "images", up to 6) */
+
+
 export async function createProduct(req, res) {
     try {
         const files = req.files || [];
-        let imageUrls = [];
 
-        if (files.length > 0) {
-            imageUrls = await uploadMultiple(files);
-        } else if (req.body.images) {
-            // allow passing already-hosted image URLs as a JSON array or comma separated string
-            imageUrls = Array.isArray(req.body.images)
-                ? req.body.images
-                : String(req.body.images).split(",").map((s) => s.trim()).filter(Boolean);
+        if (files.length === 0) {
+            return res.status(400).json({
+                message: "At least one product image is required",
+            });
         }
 
-        if (imageUrls.length === 0) {
-            return res.status(400).json({ message: "At least one product image is required" });
+        // 1. Upload image(s)
+        const imageUrls = await uploadMultiple(files);
+
+        if (!imageUrls || imageUrls.length === 0) {
+            return res.status(400).json({
+                message: "Image upload failed",
+            });
         }
 
-        const name = req.body.name;
-        let slug = slugify(name);
-        const existing = await productModel.findOne({ slug });
-        if (existing) slug = `${slug}-${Date.now().toString(36)}`;
+        // 2. Convert first image to base64
+        const firstFile = files[0];
 
-        const product = await productModel.create({
-            name,
-            slug,
-            description: req.body.description,
-            shortDescription: req.body.shortDescription || req.body.description?.slice(0, 140) || "",
-            price: Number(req.body.price),
-            discountPrice: req.body.discountPrice ? Number(req.body.discountPrice) : undefined,
-            images: imageUrls,
-            category: req.body.category,
-            stock: Number(req.body.stock) || 0,
-            material: req.body.material,
-            dimensions: req.body.dimensions,
-            weight: req.body.weight,
-            technique: req.body.technique,
-            care: req.body.care,
-            featured: req.body.featured === "true" || req.body.featured === true,
+        const base64Image = firstFile.buffer.toString("base64");
+
+        // 3. Generate product details using Gemini
+        const aiProduct = await generateProductDetails(base64Image);
+
+        // 4. Generate slug
+        let slug = slugify(aiProduct.name, {
+            lower: true,
+            strict: true,
         });
 
-        res.status(201).json({ message: "Product created successfully", product });
+        const existing = await productModel.findOne({ slug });
+
+        if (existing) {
+            slug = `${slug}-${Date.now().toString(36)}`;
+        }
+
+        // 5. Create product
+        const product = await productModel.create({
+            name: aiProduct.name,
+            slug,
+
+            description: aiProduct.description,
+
+            shortDescription:
+                aiProduct.shortDescription ||
+                aiProduct.description?.slice(0, 140) ||
+                "",
+
+            price: Number(aiProduct.price),
+
+            discountPrice:
+                aiProduct.discountPrice !== undefined
+                    ? Number(aiProduct.discountPrice)
+                    : undefined,
+
+            images: imageUrls,
+
+            category: aiProduct.category,
+
+            stock: Number(aiProduct.stock) || 1,
+
+            material: aiProduct.material,
+
+            dimensions: aiProduct.dimensions,
+
+            weight: aiProduct.weight,
+
+            technique: aiProduct.technique,
+
+            care: aiProduct.care,
+
+            featured: false,
+        });
+
+        // 6. Return created product
+        return res.status(201).json({
+            message: "Product created successfully using AI",
+            product,
+        });
+
     } catch (err) {
         console.error("Error creating product:", err);
-        res.status(500).json({ message: "Error creating product", error: err.message });
+
+        return res.status(500).json({
+            message: "Error creating product",
+            error: err.message,
+        });
     }
 }
 
