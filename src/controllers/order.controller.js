@@ -147,42 +147,55 @@ export async function getOrderById(req, res) {
 }
 
 /** GET /api/orders/admin/all (admin) */
+/** GET /api/orders/admin/all (admin) */
 export async function getAllOrders(req, res) {
     try {
         const orders = await orderModel
             .find()
-            .populate("user", "fullName email")
-            .populate("items.productId", "name image price")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
         const formattedOrders = orders.map((order) => ({
             id: order._id.toString(),
-            userId: order.user?._id?.toString() || "",
-            customerName: order.user?.fullName || "Unknown",
-            customerEmail: order.user?.email || "",
 
-            items: order.items.map((item) => ({
-                productId: item.productId?._id?.toString() || "",
-                name: item.productId?.name || item.name,
-                image: item.productId?.images?.[0] || item.image,
-                price: item.price,
-                quantity: item.quantity,
-            })),
+            // Customer information is already stored in the order
+            userId: order.user?.toString() || "",
 
-            address: order.address,
-            subtotal: order.subtotal,
-            shipping: order.shipping,
-            total: order.total,
+            customerName: order.customerName || "Unknown",
+            customerEmail: order.customerEmail || "",
+
+            // Product snapshot stored when order was created
+            items: Array.isArray(order.items)
+                ? order.items.map((item) => ({
+                      productId: item.productId?.toString() || "",
+                      name: item.name || "Unknown Product",
+                      image: item.image || "",
+                      price: Number(item.price) || 0,
+                      quantity: Number(item.quantity) || 1,
+                  }))
+                : [],
+
+            address: order.address || null,
+
+            subtotal: Number(order.subtotal) || 0,
+            shipping: Number(order.shipping) || 0,
+            total: Number(order.total) || 0,
+
             paymentMethod: order.paymentMethod,
             paymentStatus: order.paymentStatus,
             deliveryStatus: order.deliveryStatus,
+
             createdAt: order.createdAt,
         }));
 
-        res.status(200).json(formattedOrders);
+        return res.status(200).json(formattedOrders);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal server error" });
+        console.error("Error fetching admin orders:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+        });
     }
 }
 
