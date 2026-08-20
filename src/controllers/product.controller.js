@@ -186,6 +186,7 @@ export async function createProduct(req, res) {
             message: "Product created successfully using AI",
             product,
         });
+        
 
     } catch (err) {
         console.error("Error creating product:", err);
