@@ -67,7 +67,7 @@ async function generateProductDetails(base64ImageFile) {
 
                 Name should be 4-6 words long
 
-                price should not exceed 5000
+                price should be between 1000-1200
                 stock always 1
                 
 

@@ -147,29 +147,27 @@ export async function getOrderById(req, res) {
 }
 
 /** GET /api/orders/admin/all (admin) */
-/** GET /api/orders/admin/all (admin) */
 export async function getAllOrders(req, res) {
     try {
-        // const orders = await orderModel.find().sort({ createdAt: -1 });
-        // res.status(200).json(orders);
-        const orders = await orderModel
-            .find()
-            .populate("user", "fullName email")
-            .populate("items.product", "name image price")
-            .sort({ createdAt: -1 });
+        const orders = await orderModel.find()
+            .populate("user", "name email")
+            .populate("items.productId"); // ✅ correct
 
         const formattedOrders = orders.map((order) => ({
             id: order._id.toString(),
-            userId: order.user?._id?.toString() || "",
-            customerName: order.user?.fullName || "Unknown",
-            customerEmail: order.user?.email || "",
+            userId: order.user ? order.user.toString() : null,
+
+            customerName: order.customerName,
+            customerEmail: order.customerEmail,
+
             items: order.items.map((item) => ({
-                productId: item.product?._id?.toString() || "",
-                name: item.product?.name || "Deleted Product",
-                image: item.product?.image || "",
+                productId: item.productId ? item.productId.toString() : null,
+                name: item.name,
+                image: item.image,
                 price: item.price,
                 quantity: item.quantity,
             })),
+
             address: order.address,
             subtotal: order.subtotal,
             shipping: order.shipping,
@@ -180,9 +178,9 @@ export async function getAllOrders(req, res) {
             createdAt: order.createdAt,
         }));
 
-        res.status(200).json(formattedOrders);
-    } catch (error) {
-        console.error(error);
+        res.json(formattedOrders);
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Internal server error" });
     }
 }
