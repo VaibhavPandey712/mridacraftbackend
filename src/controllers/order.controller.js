@@ -150,6 +150,7 @@ export async function getOrderById(req, res) {
 export async function getAllOrders(req, res) {
     try {
         const orders = await orderModel.find()
+            .sort({ createdAt: -1 })
             .populate("user", "name email")
             .populate("items.productId"); // ✅ correct
 
